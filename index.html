@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#11194f">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Ce soir">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Ce soir, je fais quoi ?</title>
+<style>
+:root{--bg:#f7f3ee;--card:#fffaf5;--ink:#302b2b;--muted:#746c6c;--accent:#7c5cff;--soft:#eee8e5}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+body{padding:env(safe-area-inset-top) 0 env(safe-area-inset-bottom)}
+main{width:100%;max-width:520px;margin:auto;padding:28px 16px 40px}
+header{text-align:center;padding:8px 8px 22px}
+h1{font-size:32px;line-height:1.08;margin:0 0 7px;letter-spacing:-.5px}.sub{color:var(--muted);font-size:15px}
+.card{background:var(--card);border-radius:25px;padding:21px;margin:14px 0;box-shadow:0 8px 26px #302b2b0d}
+button{border:0;border-radius:17px;padding:15px 18px;font-size:17px;font-weight:750;min-height:52px;cursor:pointer}
+button:disabled{opacity:.45}.primary{background:var(--accent);color:white}.big{width:100%;min-height:68px;font-size:20px;box-shadow:0 7px 18px #7c5cff30}.secondary{background:var(--soft);color:var(--ink)}
+#result{display:none;text-align:center;padding:28px 18px}.emoji{font-size:72px;line-height:1}.activity{font-size:30px;font-weight:850;margin:12px 0 5px}.hint{font-size:17px;color:var(--muted);line-height:1.4;margin:0 0 22px}
+.row{display:flex;flex-direction:column;gap:9px}.row button{width:100%}h2{font-size:20px;margin:0 0 13px}
+input{width:100%;height:52px;padding:0 14px;border:1px solid #ddd2ce;border-radius:15px;font-size:17px;background:white;outline:none}
+.form{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:11px}.form button{min-height:52px;padding:0 15px}
+.current{padding:14px;background:#f1ebff;border-radius:15px;margin-bottom:11px;font-size:15px}.current b{display:block;font-size:18px;margin-top:4px}
+ul{list-style:none;padding:0;margin:0}li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #eee5e1}li:last-child{border-bottom:0}li button{min-height:42px;padding:7px 13px;font-size:15px}
+.muted{color:var(--muted);font-size:14px;line-height:1.45}details{margin-top:14px}details summary{font-weight:750;font-size:18px;cursor:pointer;list-style:none;padding:4px 2px}details summary::-webkit-details-marker{display:none}details summary:after{content:"＋";float:right;color:var(--muted)}details[open] summary:after{content:"−"}
+.error{background:#f5dddd;color:#7b3030;border-radius:15px;padding:13px;margin-bottom:14px;display:none}
+@media(min-width:700px){main{padding-top:45px}.row{flex-direction:row}.row button{width:auto}}
+</style>
+</head>
+<body>
+<main>
+<header><h1>🌙 Ce soir, je fais quoi ?</h1><div class="sub">Je décide quand tu n'as pas envie de décider.</div></header>
+<div id="error" class="error"></div>
+<div class="card">
+<button class="primary big" id="choose" onclick="draw()" disabled>⏳ Chargement...</button>
+<button class="secondary" id="newEvening" onclick="newEvening()" style="display:none;width:100%;margin-top:9px">↩️ Nouvelle soirée</button>
+</div>
+<div class="card" id="result">
+<div class="emoji" id="emoji"></div><div class="activity" id="activity"></div><div class="hint" id="hint"></div>
+<div class="row"><button class="primary" onclick="closeResult()">✅ C'est parti</button><button class="secondary" id="again" onclick="draw()">🔄 Une seule relance</button></div>
+</div>
+<details><summary>📚 Lecture</summary>
+<div class="card"><div class="current" id="currentBook">Chargement...</div>
+<div class="form"><input id="currentInput" placeholder="Titre du livre en cours"><button class="secondary" onclick="setCurrentBook()">Définir</button></div>
+<button class="secondary" onclick="finishBook()" style="width:100%">📖 J'ai terminé mon livre</button>
+<p class="muted">Tant qu'un livre est en cours, Lecture choisira toujours celui-là.</p></div>
+<div class="card"><h2>Prochaines lectures</h2><div class="form"><input id="bookInput" placeholder="Ajouter un livre"><button class="secondary" onclick="addBook()">Ajouter</button></div><ul id="bookList"></ul></div>
+</details>
+<details><summary>🧵 Projets couture</summary><div class="card"><div class="form"><input id="sewInput" placeholder="Ajouter un projet"><button class="secondary" onclick="addSewing()">Ajouter</button></div><ul id="sewList"></ul></div></details>
+<details><summary>📺 TV / séries</summary><div class="card"><div class="form"><input id="tvInput" placeholder="Ajouter une série / émission"><button class="secondary" onclick="addTV()">Ajouter</button></div><ul id="tvList"></ul></div></details>
+<details><summary>🗃️ Travail sur ma VAE</summary><div class="card"><p class="muted">Activité fixe : aucun sous-choix.</p></div></details>
+<details><summary>🛋️ Repos</summary><div class="card"><p class="muted">Activité fixe : aucun sous-choix.</p></div></details>
+</main>
+<script>
+const API="https://script.google.com/macros/s/AKfycbxaessz9CM2D3CsEJ72aU59sTpsh5OButH3PsqJVLktM7xez-EDlJGMLrb2hZrZRQK/exec";
+let data={lecture:{currentBook:"",books:[]},couture:[],tv:[]},drawCount=0;
+
+function api(action,params={},done){
+  const cb="cb_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+  window[cb]=function(result){delete window[cb];script.remove();if(result&&result.error){showError(result.error);return}done(result)};
+  const script=document.createElement("script");
+  const q=new URLSearchParams({action,callback:cb,...params});
+  script.src=API+"?"+q.toString();
+  script.onerror=()=>{delete window[cb];script.remove();showError("Impossible de contacter les données.");};
+  document.body.appendChild(script);
+}
+function showError(m){const b=document.getElementById("error");b.textContent=m;b.style.display="block"}
+function loadData(){api("getData",{},r=>{data=r;renderAll();document.getElementById("choose").disabled=false;document.getElementById("choose").textContent="🎲 CHOISIS POUR MOI"})}
+
+const activities=[{key:"sew",emoji:"🧵",name:"Couture"},{key:"read",emoji:"📚",name:"Lecture"},{key:"vae",emoji:"🗃️",name:"Travail sur ma VAE"},{key:"tv",emoji:"📺",name:"TV / série"},{key:"rest",emoji:"🛋️",name:"Repos"}];
+function availableActivities(){return activities.filter(a=>a.key==="vae"||a.key==="rest"||(a.key==="sew"&&data.couture.length)||(a.key==="tv"&&data.tv.length)||(a.key==="read"&&(data.lecture.currentBook||data.lecture.books.length)))}
+function draw(){
+ if(drawCount>=2)return;const pool=availableActivities();if(!pool.length)return;drawCount++;
+ const a=pool[Math.floor(Math.random()*pool.length)];let hint="";
+ if(a.key==="read"){if(data.lecture.currentBook)hint="Continue : "+data.lecture.currentBook;else{const book=data.lecture.books[Math.floor(Math.random()*data.lecture.books.length)];api("setCurrentBook",{title:book},r=>{data=r;renderAll()});hint="Commence : "+book}}
+ if(a.key==="sew")hint="Projet : "+data.couture[Math.floor(Math.random()*data.couture.length)];
+ if(a.key==="tv")hint="À regarder : "+data.tv[Math.floor(Math.random()*data.tv.length)];
+ if(a.key==="vae")hint="Pas de sous-choix : tu travailles sur ta VAE.";
+ if(a.key==="rest")hint="Ce soir, tu n’as rien à décider. Repos.";
+ document.getElementById("emoji").textContent=a.emoji;document.getElementById("activity").textContent=a.name;document.getElementById("hint").textContent=hint;document.getElementById("result").style.display="block";
+ document.getElementById("choose").style.display="none";document.getElementById("again").style.display=drawCount===1?"block":"none";if(drawCount===2)document.getElementById("newEvening").style.display="block";
+}
+function newEvening(){drawCount=0;document.getElementById("choose").style.display="block";document.getElementById("choose").disabled=false;document.getElementById("again").style.display="none";document.getElementById("newEvening").style.display="none";document.getElementById("result").style.display="none"}
+function closeResult(){document.getElementById("result").style.display="none"}
+function setCurrentBook(){const i=document.getElementById("currentInput"),t=i.value.trim();if(!t)return;api("setCurrentBook",{title:t},r=>{data=r;i.value="";renderAll()})}
+function finishBook(){api("finishBook",{},r=>{data=r;renderAll()})}
+function addBook(){const i=document.getElementById("bookInput"),t=i.value.trim();if(!t)return;api("addBook",{title:t},r=>{data=r;i.value="";renderAll()})}
+function deleteBook(t){api("deleteBook",{title:t},r=>{data=r;renderAll()})}
+function addSewing(){const i=document.getElementById("sewInput"),v=i.value.trim();if(!v)return;api("addSewing",{name:v},r=>{data=r;i.value="";renderAll()})}
+function deleteSewing(v){api("deleteSewing",{name:v},r=>{data=r;renderAll()})}
+function addTV(){const i=document.getElementById("tvInput"),v=i.value.trim();if(!v)return;api("addTV",{name:v},r=>{data=r;i.value="";renderAll()})}
+function deleteTV(v){api("deleteTV",{name:v},r=>{data=r;renderAll()})}
+function renderAll(){renderCurrentBook();renderBooks();renderSewing();renderTV()}
+function renderCurrentBook(){const b=document.getElementById("currentBook");b.innerHTML=data.lecture.currentBook?"<span style='color:#746c6c'>EN COURS</span><b>"+escapeHtml(data.lecture.currentBook)+"</b>":"Aucun livre en cours."}
+function renderBooks(){const l=document.getElementById("bookList");l.innerHTML="";data.lecture.books.forEach(b=>{const li=document.createElement("li");li.innerHTML="<span>"+escapeHtml(b)+"</span><button class='secondary' onclick='deleteBook("+JSON.stringify(b)+")'>×</button>";l.appendChild(li)})}
+function renderSewing(){const l=document.getElementById("sewList");l.innerHTML="";data.couture.forEach(v=>{const li=document.createElement("li");li.innerHTML="<span>"+escapeHtml(v)+"</span><button class='secondary' onclick='deleteSewing("+JSON.stringify(v)+")'>×</button>";l.appendChild(li)})}
+function renderTV(){const l=document.getElementById("tvList");l.innerHTML="";data.tv.forEach(v=>{const li=document.createElement("li");li.innerHTML="<span>"+escapeHtml(v)+"</span><button class='secondary' onclick='deleteTV("+JSON.stringify(v)+")'>×</button>";l.appendChild(li)})}
+function escapeHtml(v){return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
+if("serviceWorker"in navigator)navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
+loadData();
+</script>
+</body>
+</html>
