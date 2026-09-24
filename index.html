@@ -138,15 +138,11 @@ function draw(){
  }
 
  if(a.key==="tv"){
-   if(data.tv.current.length){
-     const p=data.tv.current[Math.floor(Math.random()*data.tv.current.length)];
+   const allTV=[...(data.tv.current||[]),...(data.tv.items||[])];
+   if(allTV.length){
+     const p=allTV[Math.floor(Math.random()*allTV.length)];
      selectedCurrent={type:"tv",name:p};
-     hint="Continue : "+p;
-   } else {
-     const p=data.tv.items[Math.floor(Math.random()*data.tv.items.length)];
-     selectedCurrent={type:"tv",name:p};
-     hint="Commence : "+p;
-     api("setCurrentTV",{name:p},r=>{data=r;renderAll()});
+     hint="Ce soir : "+p;
    }
  }
 
