@@ -43,64 +43,172 @@ ul{list-style:none;padding:0;margin:0}li{display:flex;justify-content:space-betw
 </div>
 <div class="card" id="result">
 <div class="emoji" id="emoji"></div><div class="activity" id="activity"></div><div class="hint" id="hint"></div>
-<div class="row"><button class="primary" onclick="closeResult()">✅ C'est parti</button><button class="secondary" id="again" onclick="draw()">🔄 Une seule relance</button></div>
+<div class="row"><button class="primary" onclick="closeResult()">✅ C'est parti</button><button class="secondary" id="finishSelected" onclick="finishSelected()" style="display:none">✅ J’ai terminé ce projet / programme</button><button class="secondary" id="again" onclick="draw()">🔄 Une seule relance</button></div>
 </div>
+
 <details><summary>📚 Lecture</summary>
-<div class="card"><div class="current" id="currentBook">Chargement...</div>
+<div class="card">
+<div class="current" id="currentBook">Chargement...</div>
 <div class="form"><input id="currentInput" placeholder="Titre du livre en cours"><button class="secondary" onclick="setCurrentBook()">Définir</button></div>
 <button class="secondary" onclick="finishBook()" style="width:100%">📖 J'ai terminé mon livre</button>
-<p class="muted">Tant qu'un livre est en cours, Lecture choisira toujours celui-là.</p></div>
+<p class="muted">Tant qu'un livre est en cours, Lecture choisira toujours celui-là.</p>
+</div>
 <div class="card"><h2>Prochaines lectures</h2><div class="form"><input id="bookInput" placeholder="Ajouter un livre"><button class="secondary" onclick="addBook()">Ajouter</button></div><ul id="bookList"></ul></div>
 </details>
-<details><summary>🧵 Projets couture</summary><div class="card"><div class="form"><input id="sewInput" placeholder="Ajouter un projet"><button class="secondary" onclick="addSewing()">Ajouter</button></div><ul id="sewList"></ul></div></details>
-<details><summary>📺 TV / séries</summary><div class="card"><div class="form"><input id="tvInput" placeholder="Ajouter une série / émission"><button class="secondary" onclick="addTV()">Ajouter</button></div><ul id="tvList"></ul></div></details>
+
+<details><summary>🧵 Projets couture</summary>
+<div class="card">
+<div class="current" id="currentSewing">Chargement...</div>
+<div class="form"><input id="currentSewingInput" placeholder="Projet couture en cours"><button class="secondary" onclick="setCurrentSewing()">Définir</button></div>
+<button class="secondary" onclick="finishSewing()" style="width:100%">🧵 J'ai terminé mon projet</button>
+<p class="muted">Tant qu'un projet est en cours, Couture choisira toujours celui-là.</p>
+</div>
+<div class="card"><h2>Projets à coudre</h2><div class="form"><input id="sewInput" placeholder="Ajouter un projet"><button class="secondary" onclick="addSewing()">Ajouter</button></div><ul id="sewList"></ul></div>
+</details>
+
+<details><summary>📺 TV / séries</summary>
+<div class="card">
+<div class="current" id="currentTV">Chargement...</div>
+<div class="form"><input id="currentTVInput" placeholder="Programme en cours"><button class="secondary" onclick="setCurrentTV()">Définir</button></div>
+<button class="secondary" onclick="finishTV()" style="width:100%">📺 J'ai terminé ma série</button>
+<p class="muted">Tant qu'un programme est en cours, TV choisira toujours celui-là.</p>
+</div>
+<div class="card"><h2>À regarder</h2><div class="form"><input id="tvInput" placeholder="Ajouter une série / émission"><button class="secondary" onclick="addTV()">Ajouter</button></div><ul id="tvList"></ul></div>
+</details>
+
 <details><summary>🗃️ Travail sur ma VAE</summary><div class="card"><p class="muted">Activité fixe : aucun sous-choix.</p></div></details>
 <details><summary>🛋️ Repos</summary><div class="card"><p class="muted">Activité fixe : aucun sous-choix.</p></div></details>
 </main>
+
 <script>
 const API="https://script.google.com/macros/s/AKfycbxaessz9CM2D3CsEJ72aU59sTpsh5OButH3PsqJVLktM7xez-EDlJGMLrb2hZrRZRQK/exec";
-let data={lecture:{currentBook:"",books:[]},couture:[],tv:[]},drawCount=0;
+let data={lecture:{currentBook:"",books:[]},couture:{current:"",items:[]},tv:{current:"",items:[]}},drawCount=0;
 
 function api(action,params={},done){
-  const cb="cb_"+Date.now()+"_"+Math.random().toString(36).slice(2);
-  window[cb]=function(result){delete window[cb];script.remove();if(result&&result.error){showError(result.error);return}done(result)};
-  const script=document.createElement("script");
-  const q=new URLSearchParams({action,callback:cb,...params});
-  script.src=API+"?"+q.toString();
-  script.onerror=()=>{delete window[cb];script.remove();showError("Impossible de contacter les données.");};
-  document.body.appendChild(script);
+ const cb="cb_"+Date.now()+"_"+Math.random().toString(36).slice(2);
+ let script=document.createElement("script");
+ window[cb]=function(result){delete window[cb];script.remove();if(result&&result.error){showError(result.error);return}done(result)};
+ const q=new URLSearchParams({action,callback:cb,...params});
+ script.src=API+"?"+q.toString();
+ script.onerror=()=>{delete window[cb];script.remove();showError("Impossible de contacter les données.");};
+ document.body.appendChild(script);
 }
 function showError(m){const b=document.getElementById("error");b.textContent=m;b.style.display="block"}
 function loadData(){api("getData",{},r=>{data=r;renderAll();document.getElementById("choose").disabled=false;document.getElementById("choose").textContent="🎲 CHOISIS POUR MOI"})}
-
 const activities=[{key:"sew",emoji:"🧵",name:"Couture"},{key:"read",emoji:"📚",name:"Lecture"},{key:"vae",emoji:"🗃️",name:"Travail sur ma VAE"},{key:"tv",emoji:"📺",name:"TV / série"},{key:"rest",emoji:"🛋️",name:"Repos"}];
-function availableActivities(){return activities.filter(a=>a.key==="vae"||a.key==="rest"||(a.key==="sew"&&data.couture.length)||(a.key==="tv"&&data.tv.length)||(a.key==="read"&&(data.lecture.currentBook||data.lecture.books.length)))}
+
+function availableActivities(){
+ return activities.filter(a=>a.key==="vae"||a.key==="rest"||
+ (a.key==="sew"&&(data.couture.current||data.couture.items.length))||
+ (a.key==="tv"&&(data.tv.current||data.tv.items.length))||
+ (a.key==="read"&&(data.lecture.currentBook||data.lecture.books.length)));
+}
+let selectedCurrent = {type:"", name:""};
+
 function draw(){
- if(drawCount>=2)return;const pool=availableActivities();if(!pool.length)return;drawCount++;
- const a=pool[Math.floor(Math.random()*pool.length)];let hint="";
- if(a.key==="read"){if(data.lecture.currentBook)hint="Continue : "+data.lecture.currentBook;else{const book=data.lecture.books[Math.floor(Math.random()*data.lecture.books.length)];api("setCurrentBook",{title:book},r=>{data=r;renderAll()});hint="Commence : "+book}}
- if(a.key==="sew")hint="Projet : "+data.couture[Math.floor(Math.random()*data.couture.length)];
- if(a.key==="tv")hint="À regarder : "+data.tv[Math.floor(Math.random()*data.tv.length)];
+ if(drawCount>=2)return;
+ const pool=availableActivities();if(!pool.length)return;
+ drawCount++;
+ const a=pool[Math.floor(Math.random()*pool.length)];
+ let hint="";
+
+ if(a.key==="read"){
+   if(data.lecture.currentBook){
+     selectedCurrent={type:"read",name:data.lecture.currentBook};
+     hint="Continue : "+data.lecture.currentBook;
+   } else {
+     const book=data.lecture.books[Math.floor(Math.random()*data.lecture.books.length)];
+     selectedCurrent={type:"read",name:book};
+     hint="Commence : "+book;
+     api("setCurrentBook",{title:book},r=>{data=r;renderAll()});
+   }
+ }
+
+ if(a.key==="sew"){
+   if(data.couture.current.length){
+     const p=data.couture.current[Math.floor(Math.random()*data.couture.current.length)];
+     selectedCurrent={type:"sew",name:p};
+     hint="Continue : "+p;
+   } else {
+     const p=data.couture.items[Math.floor(Math.random()*data.couture.items.length)];
+     selectedCurrent={type:"sew",name:p};
+     hint="Commence : "+p;
+     api("setCurrentSewing",{name:p},r=>{data=r;renderAll()});
+   }
+ }
+
+ if(a.key==="tv"){
+   if(data.tv.current.length){
+     const p=data.tv.current[Math.floor(Math.random()*data.tv.current.length)];
+     selectedCurrent={type:"tv",name:p};
+     hint="Continue : "+p;
+   } else {
+     const p=data.tv.items[Math.floor(Math.random()*data.tv.items.length)];
+     selectedCurrent={type:"tv",name:p};
+     hint="Commence : "+p;
+     api("setCurrentTV",{name:p},r=>{data=r;renderAll()});
+   }
+ }
+
  if(a.key==="vae")hint="Pas de sous-choix : tu travailles sur ta VAE.";
  if(a.key==="rest")hint="Ce soir, tu n’as rien à décider. Repos.";
- document.getElementById("emoji").textContent=a.emoji;document.getElementById("activity").textContent=a.name;document.getElementById("hint").textContent=hint;document.getElementById("result").style.display="block";
- document.getElementById("choose").style.display="none";document.getElementById("again").style.display=drawCount===1?"block":"none";if(drawCount===2)document.getElementById("newEvening").style.display="block";
+
+ document.getElementById("emoji").textContent=a.emoji;
+ document.getElementById("activity").textContent=a.name;
+ document.getElementById("hint").textContent=hint;
+ document.getElementById("result").style.display="block";
+ document.getElementById("choose").style.display="none";
+ document.getElementById("again").style.display=drawCount===1?"block":"none";
+ document.getElementById("newEvening").style.display=drawCount===2?"block":"none";
+
+ const finish=document.getElementById("finishSelected");
+ if(finish){
+   finish.style.display=(selectedCurrent.type==="sew"||selectedCurrent.type==="tv")?"block":"none";
+ }
 }
+
+function finishSelected(){
+ if(!selectedCurrent.name)return;
+ if(selectedCurrent.type==="sew"){
+   api("finishSewing",{name:selectedCurrent.name},r=>{
+     const sheetName=selectedCurrent.name;
+     data=r;
+     // Le backend marque explicitement le projet sélectionné comme terminé.
+     api("setStatus",{sheet:"Couture",name:sheetName,status:"Terminé"},r2=>{data=r2;renderAll();});
+   });
+ }
+ if(selectedCurrent.type==="tv"){
+   api("finishTV",{name:selectedCurrent.name},r=>{
+     api("setStatus",{sheet:"TV",name:selectedCurrent.name,status:"Terminé"},r2=>{data=r2;renderAll();});
+   });
+ }
+ if(selectedCurrent.type==="read") finishBook();
+ closeResult();
+}
+
 function newEvening(){drawCount=0;document.getElementById("choose").style.display="block";document.getElementById("choose").disabled=false;document.getElementById("again").style.display="none";document.getElementById("newEvening").style.display="none";document.getElementById("result").style.display="none"}
 function closeResult(){document.getElementById("result").style.display="none"}
+
 function setCurrentBook(){const i=document.getElementById("currentInput"),t=i.value.trim();if(!t)return;api("setCurrentBook",{title:t},r=>{data=r;i.value="";renderAll()})}
 function finishBook(){api("finishBook",{},r=>{data=r;renderAll()})}
 function addBook(){const i=document.getElementById("bookInput"),t=i.value.trim();if(!t)return;api("addBook",{title:t},r=>{data=r;i.value="";renderAll()})}
 function deleteBook(t){api("deleteBook",{title:t},r=>{data=r;renderAll()})}
+
+function setCurrentSewing(){const i=document.getElementById("currentSewingInput"),t=i.value.trim();if(!t)return;api("setCurrentSewing",{name:t},r=>{data=r;i.value="";renderAll()})}
+function finishSewing(){api("finishSewing",{},r=>{data=r;renderAll()})}
 function addSewing(){const i=document.getElementById("sewInput"),v=i.value.trim();if(!v)return;api("addSewing",{name:v},r=>{data=r;i.value="";renderAll()})}
 function deleteSewing(v){api("deleteSewing",{name:v},r=>{data=r;renderAll()})}
+
+function setCurrentTV(){const i=document.getElementById("currentTVInput"),t=i.value.trim();if(!t)return;api("setCurrentTV",{name:t},r=>{data=r;i.value="";renderAll()})}
+function finishTV(){api("finishTV",{},r=>{data=r;renderAll()})}
 function addTV(){const i=document.getElementById("tvInput"),v=i.value.trim();if(!v)return;api("addTV",{name:v},r=>{data=r;i.value="";renderAll()})}
 function deleteTV(v){api("deleteTV",{name:v},r=>{data=r;renderAll()})}
+
 function renderAll(){renderCurrentBook();renderBooks();renderSewing();renderTV()}
 function renderCurrentBook(){const b=document.getElementById("currentBook");b.innerHTML=data.lecture.currentBook?"<span style='color:#746c6c'>EN COURS</span><b>"+escapeHtml(data.lecture.currentBook)+"</b>":"Aucun livre en cours."}
 function renderBooks(){const l=document.getElementById("bookList");l.innerHTML="";data.lecture.books.forEach(b=>{const li=document.createElement("li");li.innerHTML="<span>"+escapeHtml(b)+"</span><button class='secondary' onclick='deleteBook("+JSON.stringify(b)+")'>×</button>";l.appendChild(li)})}
-function renderSewing(){const l=document.getElementById("sewList");l.innerHTML="";data.couture.forEach(v=>{const li=document.createElement("li");li.innerHTML="<span>"+escapeHtml(v)+"</span><button class='secondary' onclick='deleteSewing("+JSON.stringify(v)+")'>×</button>";l.appendChild(li)})}
-function renderTV(){const l=document.getElementById("tvList");l.innerHTML="";data.tv.forEach(v=>{const li=document.createElement("li");li.innerHTML="<span>"+escapeHtml(v)+"</span><button class='secondary' onclick='deleteTV("+JSON.stringify(v)+")'>×</button>";l.appendChild(li)})}
+function renderSewing(){const c=document.getElementById("currentSewing");c.innerHTML=data.couture.current?"<span style='color:#746c6c'>EN COURS</span><b>"+escapeHtml(data.couture.current)+"</b>":"Aucun projet en cours.";const l=document.getElementById("sewList");l.innerHTML="";data.couture.items.forEach(v=>{const li=document.createElement("li");li.innerHTML="<span>"+escapeHtml(v)+"</span><button class='secondary' onclick='deleteSewing("+JSON.stringify(v)+")'>×</button>";l.appendChild(li)})}
+function renderTV(){const c=document.getElementById("currentTV");c.innerHTML=data.tv.current?"<span style='color:#746c6c'>EN COURS</span><b>"+escapeHtml(data.tv.current)+"</b>":"Aucun programme en cours.";const l=document.getElementById("tvList");l.innerHTML="";data.tv.items.forEach(v=>{const li=document.createElement("li");li.innerHTML="<span>"+escapeHtml(v)+"</span><button class='secondary' onclick='deleteTV("+JSON.stringify(v)+")'>×</button>";l.appendChild(li)})}
 function escapeHtml(v){return String(v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;")}
 if("serviceWorker"in navigator)navigator.serviceWorker.register("./service-worker.js").catch(()=>{});
 loadData();
