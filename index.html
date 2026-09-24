@@ -93,6 +93,7 @@ const API="https://script.google.com/macros/s/AKfycbxaessz9CM2D3CsEJ72aU59sTpsh5
 let data={lecture:{currentBook:"",books:[]},couture:{current:[],items:[]},tv:[]};
 let drawCount=0;
 let selectedCurrent={type:"",name:""};
+let lastDrawKey="";
 
 function api(action,params={},done){
  const cb="cb_"+Date.now()+"_"+Math.random().toString(36).slice(2);
@@ -140,11 +141,18 @@ function availableActivities(){
 function draw(){
  if(drawCount>=2)return;
 
- const pool=availableActivities();
+ let pool=availableActivities();
  if(!pool.length)return;
+
+ // Une seule relance : éviter de refaire exactement le même tirage.
+ if(drawCount===1 && lastDrawKey){
+   const filtered=pool.filter(a=>a.key!==lastDrawKey);
+   if(filtered.length) pool=filtered;
+ }
 
  drawCount++;
  const a=pool[Math.floor(Math.random()*pool.length)];
+ lastDrawKey=a.key;
  let hint="";
 
  selectedCurrent={type:"",name:""};
@@ -207,6 +215,7 @@ function finishSelected(){
 
 function newEvening(){
  drawCount=0;
+ lastDrawKey="";
  selectedCurrent={type:"",name:""};
  document.getElementById("choose").style.display="block";
  document.getElementById("choose").disabled=false;
